@@ -156,7 +156,8 @@ class Queen {
   bool _ready = false;
 
   bool isChildrenReady() {
-	_ready = _cur_day >= _period_min && (randomN(_cur_day, _period_max) == _cur_day);
+	if (!_ready)
+		_ready = _cur_day >= _period_min && (randomN(_cur_day, _period_max) == _cur_day);
 	return _ready;
   }
 
@@ -178,19 +179,34 @@ class Queen {
 	return _queenTalk;
   }
 
+  void nextDay() {
+	_cur_day++;
+  }
+
+  int getDaysBefore() {
+	return _period_max - _cur_day;
+  }
+
   std::vector<Ant>* getChildren() {
-	return nullptr;
-//	if (!isChildrenReady()) return nullptr;
-//
-//	auto* children = new std::vector<Ant>;
-//
-//	for (int i = 0; i < _count_ch; i++) {
-//	  children->push_back(
-//		  new Ant(
-//
-//			  )
-//		  )
-//	}
+	if (!isChildrenReady()) return nullptr;
+
+	auto* children = new std::vector<Ant>;
+
+	int count_ch = randomN(_count_ch_min, _count_ch_max);
+
+	for (int i = 0; i < count_ch; i++) {
+	  children->push_back(
+		  *new Ant(
+			  (randomN(0, 1) ? WARRIOR_TYPE : WORKER_TYPE),
+			  _queenTalk
+			  )
+		  );
+	}
+
+	_cur_day = 0;
+	_ready = false;
+
+	return children;
   }
 
 };
@@ -224,6 +240,37 @@ class Colony : public TalkativeColony {
 
   void startWalk() {
 	std::cout << "Колония: " << _name << " начала свой поход" << std::endl;
+  }
+
+  void childrenNextDay() {
+	_queen->nextDay();
+  }
+
+  void getChildren() {
+	auto* children = _queen->getChildren();
+
+	if (children == nullptr) {
+	  std::cout << "---Потомство: еще не готовы(осталось не больше " << _queen->getDaysBefore() << " дней)" << std::endl;
+	  return;
+	}
+
+	int count_warriors = 0;
+	int count_workers = 0;
+
+	for (int i = 0; i < children->size(); i++) {
+	  Ant ant = (*children)[i];
+	  if (ant.getType() == WARRIOR_TYPE) {
+		count_warriors++;
+		_warriors.push_back(ant);
+	  } else {
+		count_workers++;
+		_workers.push_back(ant);
+	  }
+	}
+
+	delete children;
+
+	std::cout << "---Потомство: р=" << count_workers << ", в=" << count_warriors << std::endl;
   }
 
   Colony(const char *name,
@@ -359,6 +406,9 @@ class GameProcessor: public AbstractGameProcessor{
 	_days--;
 	_colony1->startWalk();
 	_colony2->startWalk();
+
+	_colony1->childrenNextDay();
+	_colony2->childrenNextDay();
   }
 
   bool isNextDay() const override {
@@ -369,8 +419,10 @@ class GameProcessor: public AbstractGameProcessor{
 	std::cout << "День " << DAYS_UNTIL - _days + 1 << " (до засухи " << _days << " дней):" << std::endl;
 	std::cout << "-------------------------------------------" << std::endl;
 	_colony1->talk();
+	_colony1->getChildren();
 	std::cout << "-------------------------------------------" << std::endl;
 	_colony2->talk();
+	_colony2->getChildren();
 	std::cout << "-------------------------------------------" << std::endl;
 	_heap_storage->talk();
 	std::cout << "-------------------------------------------" << std::endl;
@@ -517,9 +569,10 @@ int main() {
 		generateBlackColony()
 	  );
 
-  gp->talk();
-  gp->nextDay();
-  gp->talk();
+  for (int i = 0; i < 5; i++) {
+	gp->talk();
+	gp->nextDay();
+  }
 
 
   return EXIT_SUCCESS;
