@@ -3,6 +3,11 @@
 
 #define DAYS_UNTIL 14
 
+#define WORKER "РАБОЧИЙ"
+#define WARRIOR "ВОИН"
+#define SPECIAL "ОСОБЫЙ"
+#define DEFAULT_RANK "обычный"
+
 class Talkative {
  public:
   virtual void talk() const = 0;
@@ -282,9 +287,47 @@ class GameProcessor: public AbstractGameProcessor{
   }
 };
 
-Colony* generateOrangeColony() {
+std::vector<Ant>* generateWorkers(int size, const char* queen_talk) {
   auto* workers = new std::vector<Ant>;
+
+  for (int i = 0; i < size; i++) {
+	workers->push_back(
+		*new Ant(
+			1,
+			0,
+			0,
+			WORKER,
+			DEFAULT_RANK,
+			queen_talk
+			)
+		);
+  }
+
+  return workers;
+}
+
+std::vector<Ant>* generateWarriors(int size, const char* queen_talk) {
   auto* warriors = new std::vector<Ant>;
+
+  for (int i = 0; i < size; i++) {
+	warriors->push_back(
+		*new Ant(
+				4,
+				2,
+				4,
+				WARRIOR,
+				DEFAULT_RANK,
+				queen_talk
+			)
+		);
+  }
+
+  return warriors;
+}
+
+Colony* generateOrangeColony() {
+  auto* workers = generateWorkers(18, "Королева <Беатрикс>, цикл роста личинок 2-4 дней, может создать 1-5 королев");
+  auto* warriors = generateWarriors(9, "Королева <Беатрикс>, цикл роста личинок 2-4 дней, может создать 1-5 королев");
   auto* specials = new std::vector<Ant>;
 
   Ant* queen = new Ant(
@@ -299,6 +342,30 @@ Colony* generateOrangeColony() {
 
   return new Colony(
 	  "рыжие",
+	  queen,
+	  *workers,
+	  *warriors,
+	  *specials
+	  );
+}
+
+Colony* generateBlackColony() {
+  auto* workers = generateWorkers(18, "Королева <Жозефина>, цикл роста личинок 3-3 дней, может создать 1-5 королев");
+  auto* warriors = generateWarriors(8, "Королева <Жозефина>, цикл роста личинок 3-3 дней, может создать 1-5 королев");
+  auto* specials = new std::vector<Ant>;
+
+  Ant* queen = new Ant(
+	  18,
+	  5,
+	  15,
+	  "",
+	  "",
+	  "Королева <Беатрикс>, цикл роста личинок 2-4 дней, может создать 1-5 королев",
+	  true
+	  );
+
+  return new Colony(
+	  "черные",
 	  queen,
 	  *workers,
 	  *warriors,
@@ -363,11 +430,11 @@ int main() {
   std::cout << "До засухи осталось всего " << DAYS_UNTIL << " дней" << std::endl;
   std::cout << "Выживет только сильнейшая колония, приятного просмотра голодных муравьиных игр" << std::endl;
 
-  GameProcessor* gp = new GameProcessor(
+  auto* gp = new GameProcessor(
 	  	DAYS_UNTIL,
 		generateHeapStorage(),
 		generateOrangeColony(),
-		generateOrangeColony()
+		generateBlackColony()
 	  );
 
   gp->talk();
