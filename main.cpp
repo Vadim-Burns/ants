@@ -1,12 +1,24 @@
 #include <iostream>
 #include <vector>
+#include <exception>
 
 #define DAYS_UNTIL 14
 
 #define WORKER "РАБОЧИЙ"
 #define WARRIOR "ВОИН"
 #define SPECIAL "ОСОБЫЙ"
+
+#define WORKER_TYPE -1000
+#define WORKER_SPECIAL_TYPE -1001
+#define WARRIOR_TYPE -1100
+#define WARRIOR_SPECIAL_TYPE -1101
+#define SPECIAL_TYPE -1200
+
 #define DEFAULT_RANK "обычный"
+
+int randomN(int min, int max) {
+  return min;
+}
 
 class Talkative {
  public:
@@ -39,10 +51,9 @@ class Ant : public Talkative {
 
   const char *_queenTalk;
 
-  bool _dead = false;
+  int _type;
 
-  // 1 - this ant is queen, 0 - this ant isn't queen
-  bool _queen = false;
+  bool _dead = false;
 
  public:
   void talk() const override {
@@ -56,28 +67,48 @@ class Ant : public Talkative {
 	std::cout << _queenTalk << std::endl;
   }
 
-  Ant(int health,
-	  int defence,
-	  int damage,
-	  const char *type_name,
-	  const char *rank_name,
-	  const char *queen_talk,
-	  bool queen)
+  Ant(const int type, const char* queen_talk) {
+	switch (type) {
+	  case WARRIOR_TYPE:
+		_health = 4;
+		_defence = 2;
+		_damage = 4;
+		_typeName = WARRIOR;
+		break;
+	  case WORKER_TYPE:
+		_health = 1;
+		_defence = 0;
+		_damage = 0;
+		break;
+	  default:
+		throw std::invalid_argument("auto generate only default worker or warrior");
+	}
+
+	_rankName = DEFAULT_RANK;
+	_queenTalk = queen_talk;
+	_type = type;
+  }
+
+  Ant(int health, int defence, int damage, const char *rank_name, const char *queen_talk, const int type)
 	  : _health(health),
 		_defence(defence),
 		_damage(damage),
-		_typeName(type_name),
 		_rankName(rank_name),
 		_queenTalk(queen_talk),
-		_queen(queen) {}
-
-  Ant(int health, int defence, int damage, const char *type_name, const char *rank_name, const char *queen_talk)
-	  : _health(health),
-		_defence(defence),
-		_damage(damage),
-		_typeName(type_name),
-		_rankName(rank_name),
-		_queenTalk(queen_talk) {}
+		_type(type) {
+	switch (type) {
+	  case WORKER_TYPE:
+	  case WORKER_SPECIAL_TYPE:
+		_typeName = WORKER;
+		break;
+	  case WARRIOR_TYPE:
+	  case WARRIOR_SPECIAL_TYPE:
+		_typeName = WARRIOR;
+		break;
+	  default:
+		_typeName = SPECIAL;
+	}
+  }
 
   int getHealth() const {
 	return _health;
@@ -100,8 +131,66 @@ class Ant : public Talkative {
   bool isDead() const {
 	return _dead;
   }
-  bool isQueen() const {
-	return _queen;
+
+  int getType() const {
+	return _type;
+  }
+
+};
+
+class Queen {
+ protected:
+  const char* _name;
+  const char* _queenTalk;
+
+  // количество дней высидки
+  const int _period_max;
+  const int _period_min;
+
+  // количество личинок
+  const int _count_ch_min;
+  const int _count_ch_max;
+
+  // сколько дней прошло с последних личнок
+  int _cur_day = 0;
+  bool _ready = false;
+
+  bool isChildrenReady() {
+	_ready = _cur_day >= _period_min && (randomN(_cur_day, _period_max) == _cur_day);
+	return _ready;
+  }
+
+ public:
+  Queen(const char *name,
+		const char *queen_talk,
+		const int period_max,
+		const int period_min,
+		const int count_ch_min,
+		const int count_ch_max)
+	  : _name(name),
+		_queenTalk(queen_talk),
+		_period_max(period_max),
+		_period_min(period_min),
+		_count_ch_min(count_ch_min),
+		_count_ch_max(count_ch_max) {}
+
+  const char *getQueenTalk() const {
+	return _queenTalk;
+  }
+
+  std::vector<Ant>* getChildren() {
+	return nullptr;
+//	if (!isChildrenReady()) return nullptr;
+//
+//	auto* children = new std::vector<Ant>;
+//
+//	for (int i = 0; i < _count_ch; i++) {
+//	  children->push_back(
+//		  new Ant(
+//
+//			  )
+//		  )
+//	}
   }
 
 };
@@ -111,7 +200,7 @@ class Colony : public TalkativeColony {
   const char *_name;
 
   // ants info
-  Ant *_queen;
+  Queen *_queen;
   std::vector<Ant> _workers;
   std::vector<Ant> _warriors;
   std::vector<Ant> _specials;
@@ -138,7 +227,7 @@ class Colony : public TalkativeColony {
   }
 
   Colony(const char *name,
-		 Ant *queen,
+		 Queen *queen,
 		 const std::vector<Ant> &workers,
 		 const std::vector<Ant> &warriors,
 		 const std::vector<Ant> &specials)
@@ -271,6 +360,7 @@ class GameProcessor: public AbstractGameProcessor{
 	_colony1->startWalk();
 	_colony2->startWalk();
   }
+
   bool isNextDay() const override {
 	return _days > 0;
   }
@@ -293,11 +383,7 @@ std::vector<Ant>* generateWorkers(int size, const char* queen_talk) {
   for (int i = 0; i < size; i++) {
 	workers->push_back(
 		*new Ant(
-			1,
-			0,
-			0,
-			WORKER,
-			DEFAULT_RANK,
+			WORKER_TYPE,
 			queen_talk
 			)
 		);
@@ -312,11 +398,7 @@ std::vector<Ant>* generateWarriors(int size, const char* queen_talk) {
   for (int i = 0; i < size; i++) {
 	warriors->push_back(
 		*new Ant(
-				4,
-				2,
-				4,
-				WARRIOR,
-				DEFAULT_RANK,
+				WARRIOR_TYPE,
 				queen_talk
 			)
 		);
@@ -330,14 +412,13 @@ Colony* generateOrangeColony() {
   auto* warriors = generateWarriors(9, "Королева <Беатрикс>, цикл роста личинок 2-4 дней, может создать 1-5 королев");
   auto* specials = new std::vector<Ant>;
 
-  Ant* queen = new Ant(
-	  24,
-	  5,
-	  16,
-	  "",
-	  "",
+  Queen* queen = new Queen(
+	  "Беатрикс",
 	  "Королева <Беатрикс>, цикл роста личинок 2-4 дней, может создать 1-5 королев",
-	  true
+	  4,
+	  2,
+	  1,
+	  5
 	  );
 
   return new Colony(
@@ -354,14 +435,13 @@ Colony* generateBlackColony() {
   auto* warriors = generateWarriors(8, "Королева <Жозефина>, цикл роста личинок 3-3 дней, может создать 1-5 королев");
   auto* specials = new std::vector<Ant>;
 
-  Ant* queen = new Ant(
-	  18,
-	  5,
-	  15,
-	  "",
-	  "",
-	  "Королева <Беатрикс>, цикл роста личинок 2-4 дней, может создать 1-5 королев",
-	  true
+  Queen* queen = new Queen(
+	  "Жозефина",
+	  "Королева <Жозефина>, цикл роста личинок 3-3 дней, может создать 1-5 королев",
+	  3,
+	  3,
+	  1,
+	  5
 	  );
 
   return new Colony(
