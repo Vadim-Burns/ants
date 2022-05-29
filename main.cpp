@@ -17,7 +17,7 @@
 #define DEFAULT_RANK "обычный"
 
 int randomN(int min, int max) {
-  return min;
+  return max;
 }
 
 class Talkative {
