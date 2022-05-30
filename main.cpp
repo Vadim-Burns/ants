@@ -14,6 +14,8 @@
 #define WARRIOR_SPECIAL_TYPE -1101
 #define SPECIAL_TYPE -1200
 
+#define ULTIMATE_DAMAGE 1000
+
 #define DEFAULT_RANK "обычный"
 
 int randomN(int min, int max) {
@@ -70,9 +72,9 @@ class Ant : public Talkative {
   Ant(const int type, const char* queen_talk) {
 	switch (type) {
 	  case WARRIOR_TYPE:
-		_health = 4;
-		_defence = 2;
-		_damage = 4;
+		_health = 1;
+		_defence = 0;
+		_damage = 1;
 		_typeName = WARRIOR;
 		break;
 	  case WORKER_TYPE:
@@ -134,6 +136,21 @@ class Ant : public Talkative {
 
   int getType() const {
 	return _type;
+  }
+
+  // false - not dead, true - dead
+  bool getBeat(int damage) {
+	if (damage == ULTIMATE_DAMAGE) {
+	  _dead = true;
+	  return true;
+	}
+	int hp = _health - damage + _defence;
+	if (hp > 0) {
+	  _dead = false;
+	  return false;
+	}
+
+	return true;
   }
 
 };
@@ -238,10 +255,6 @@ class Colony : public TalkativeColony {
 			  << std::endl;
   }
 
-  void startWalk() {
-	std::cout << "Колония: " << _name << " начала свой поход" << std::endl;
-  }
-
   void childrenNextDay() {
 	_queen->nextDay();
   }
@@ -279,6 +292,64 @@ class Colony : public TalkativeColony {
 		 const std::vector<Ant> &warriors,
 		 const std::vector<Ant> &specials)
 	  : _name(name), _queen(queen), _workers(workers), _warriors(warriors), _specials(specials) {}
+
+  const char *getName() const {
+	return _name;
+  }
+
+  int getWorkersSize() {
+	return _workers.size();
+  }
+
+  int getWarriorsSize() {
+	return _warriors.size();
+  }
+
+  int getSpecialsSize() {
+	return _specials.size();
+  }
+
+  Ant& getWorker(int index) {
+	return _workers[index];
+  }
+
+  Ant& getWarrior(int index) {
+	return _warriors[index];
+  }
+
+  Ant& getSpecial(int index) {
+	return _specials[index];
+  }
+
+  void killWorker(int index) {
+	_workers.erase(_workers.begin() + index);
+  }
+
+  void killWarrior(int index) {
+	_warriors.erase(_warriors.begin() + index);
+  }
+
+  void killSpecial(int index) {
+	_specials.erase(_specials.begin() + index);
+  }
+
+  void killWarriors(const std::vector<int>& indexes) {
+	int cnt = 0;
+
+	for (auto i : indexes) {
+	  killWarrior(i - cnt);
+	  cnt++;
+	}
+  }
+
+  void killWorkers(const std::vector<int>& indexes) {
+	int cnt = 0;
+
+	for (auto i: indexes) {
+	  killWorker(i - cnt);
+	  cnt++;
+	}
+  }
 };
 
 class Heap: public TalkativeHeap {
@@ -361,6 +432,20 @@ class HeapStorage {
 	return count;
   }
 
+  Heap* getRandomAliveHeap() {
+	if (getAliveCount() == 0) return nullptr;
+
+	int heap_n = randomN(0, _heaps.size() - 1);
+
+	Heap* cur_heap = &_heaps[heap_n];
+	while (cur_heap->isDead()) {
+	  heap_n = (heap_n + 1) % _heaps.size();
+	  cur_heap = &_heaps[heap_n];
+	}
+
+	return cur_heap;
+  }
+
   void addHeap(Heap& heap) {
 	_heaps.push_back(heap);
   }
@@ -385,6 +470,92 @@ class GameProcessor: public AbstractGameProcessor{
   Colony* _colony1;
   Colony* _colony2;
 
+  void startBattle() {
+	std::cout << "Обе колонии выбрали одну кучу! Начинается битва" << std::endl;
+
+	std::vector<int> wor1;
+	std::vector<int> wor2;
+
+	std::vector<int> war1;
+	std::vector<int> war2;
+
+	std::vector<int> scp1;
+	std::vector<int> scp2;
+
+	if (_colony1->getWarriorsSize() > _colony2->getWarriorsSize()) {
+	  int i;
+	  for (i = 0; i < _colony2->getWarriorsSize(); i++) {
+		if (_colony1->getWarrior(i).getBeat(_colony2->getWarrior(i).getDamage())) war1.push_back(i);
+
+		if (_colony2->getWarrior(i).getBeat(_colony1->getWarrior(i).getDamage())) war2.push_back(i);
+	  }
+
+	  if (i < _colony1->getWarriorsSize()) {
+		for (int j = 0; i < _colony1->getWarriorsSize() && j < _colony2->getWorkersSize(); i++, j++) {
+		  wor2.push_back(j);
+		}
+	  }
+
+	  // TODO: specials
+	} else {
+	  int i;
+	  for (i = 0; i < _colony1->getWarriorsSize(); i++) {
+		if (_colony1->getWarrior(i).getBeat(_colony2->getWarrior(i).getDamage())) war1.push_back(i);
+
+		if (_colony2->getWarrior(i).getBeat(_colony1->getWarrior(i).getDamage())) war2.push_back(i);
+	  }
+
+	  if (i < _colony2->getWarriorsSize()) {
+		for (int j = 0; i < _colony2->getWarriorsSize() && j < _colony1->getWorkersSize(); i++, j++) {
+		  wor1.push_back(j);
+		}
+	  }
+
+	  // TODO: specials
+	}
+
+	std::cout << "Битва окончена." << std::endl;
+	std::cout << "Колония \'" << _colony1->getName() << "\' потеряла:р=" << wor1.size() << ", в=" << war1.size() << ", о=" << scp1.size() << std::endl;
+	std::cout << "Колония \'" << _colony2->getName() << "\' потеряла:р=" << wor2.size() << ", в=" << war2.size() << ", о=" << scp2.size() << std::endl;
+	std::cout << "-------------------------------------------" << std::endl;
+
+	_colony1->killWarriors(war1);
+	_colony2->killWarriors(war2);
+
+	_colony1->killWorkers(wor1);
+	_colony2->killWorkers(wor2);
+  }
+
+  void startWalk() {
+	std::cout << std::endl;
+	Heap* heap1 = _heap_storage->getRandomAliveHeap();
+
+	if (heap1 == nullptr) {
+	  std::cout << "Походы более невозможны по причине истощения куч";
+	  return;
+	}
+
+	std::cout << "Колония \'" << _colony1->getName() << "\' начала поход на кучу " << heap1->getNumber();
+	std::cout << ": р=" << _colony1->getWorkersSize() << ", в=" << _colony1->getWarriorsSize() << ", о=" << _colony1->getSpecialsSize();
+	std::cout << std::endl;
+
+	Heap* heap2 = _heap_storage->getRandomAliveHeap();
+	std::cout << "Колония \'" << _colony2->getName() << "\' начала поход на кучу " << heap2->getNumber();
+	std::cout << ": р=" << _colony2->getWorkersSize() << ", в=" << _colony2->getWarriorsSize() << ", о=" << _colony2->getSpecialsSize();
+	std::cout << std::endl;
+
+	if (heap1 == heap2) {
+	  startBattle();
+	}
+
+	std::cout << std::endl;
+  }
+
+  void childrenUpdate() {
+	_colony1->childrenNextDay();
+	_colony2->childrenNextDay();
+  }
+
  public:
   GameProcessor(int days, HeapStorage *heap_storage, Colony *colony_1, Colony *colony_2)
 	  : _days(days), _heap_storage(heap_storage), _colony1(colony_1), _colony2(colony_2) {}
@@ -404,11 +575,10 @@ class GameProcessor: public AbstractGameProcessor{
 
   void nextDay() override {
 	_days--;
-	_colony1->startWalk();
-	_colony2->startWalk();
 
-	_colony1->childrenNextDay();
-	_colony2->childrenNextDay();
+	startWalk();
+
+	childrenUpdate();
   }
 
   bool isNextDay() const override {
