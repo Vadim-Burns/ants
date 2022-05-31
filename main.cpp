@@ -27,7 +27,7 @@
 #define DEFAULT_RANK "обычный"
 
 int randomN(int min, int max) {
-  return min;
+  return max;
 }
 
 class Talkative {
@@ -96,7 +96,7 @@ class Ant : public Talkative {
 		_damage = 1;
 
 		_can_loot = false;
-		
+
 		_typeName = WARRIOR;
 		break;
 	  case WORKER_TYPE: _health = 1;
@@ -129,7 +129,13 @@ class Ant : public Talkative {
 	}
   }
 
-  Ant(int health, int defence, int damage, const char *rank_name, const char *queen_talk, const int type, const int w_ab)
+  Ant(int health,
+	  int defence,
+	  int damage,
+	  const char *rank_name,
+	  const char *queen_talk,
+	  const int type,
+	  const int w_ab)
 	  : _health(health),
 		_defence(defence),
 		_damage(damage),
@@ -407,10 +413,17 @@ class Colony : public TalkativeColony {
   }
 
   bool hasDisableWorkerAb() {
-	for (auto& a : _workers) {
+	for (auto &a : _workers) {
 	  if (a.getWorkerAb() == WORKER_ABILITY_LEG) return true;
 	}
-	return true;
+	return false;
+  }
+
+  void addResources(int kamyshek, int listik, int vetochka, int rosinka) {
+	_kamyshek += kamyshek;
+	_listik += listik;
+	_vetochka += vetochka;
+	_rosinka += rosinka;
   }
 };
 
@@ -443,6 +456,22 @@ class Heap : public TalkativeHeap {
 
   bool isDead() const {
 	return _kamyshek == 0 && _vetochka == 0 && _listik == 0 && _rosinka == 0;
+  }
+
+  void takeKamyshek() {
+	_kamyshek--;
+  }
+
+  void takeLisktik() {
+	_listik--;
+  }
+
+  void takeVetochka() {
+	_vetochka--;
+  }
+
+  void takeRosinka() {
+	_rosinka--;
   }
 
   void talk() const override {
@@ -577,9 +606,8 @@ class GameProcessor : public AbstractGameProcessor {
 		// атака второй колонии
 		if (_colony1->getSpecialsSize() > 0) {
 		  if (_colony1->getSpecial(0).getBeat(_colony2->getSpecial(0).getDamage())) scp1.push_back(0);
-		}
-		else if (_colony1->getWorkersSize() - wor1.size() > 0) {
-			wor1.push_back(_colony1->getWorkersSize() - 1);
+		} else if (_colony1->getWorkersSize() - wor1.size() > 0) {
+		  wor1.push_back(_colony1->getWorkersSize() - 1);
 		} else if (_colony1->getWarriorsSize() - war1.size() > 0) {
 		  if (_colony1->getWarrior(_colony1->getWarriorsSize() - 1).getBeat(_colony2->getSpecial(0).getDamage()))
 			war1.push_back(_colony1->getWarriorsSize() - 1);
@@ -632,7 +660,7 @@ class GameProcessor : public AbstractGameProcessor {
 	_colony2->killSpecials(scp2);
   }
 
-  void showWalkInfo(Heap* heap1, Heap* heap2) {
+  void showWalkInfo(Heap *heap1, Heap *heap2) {
 	std::cout << std::endl;
 
 	if (heap1 == nullptr) {
@@ -657,9 +685,91 @@ class GameProcessor : public AbstractGameProcessor {
 
 	showWalkInfo(heap1, heap2);
 
+	if (heap1 == nullptr) {
+	  std::cout << std::endl;
+	  return;
+	}
+
 	if (heap1 == heap2) {
 	  startBattle();
 	}
+
+	int kamyshek1 = 0;
+	int kamyshek2 = 0;
+
+	int rosinka1 = 0;
+	int rosinka2 = 0;
+
+	int vetochka1 = 0;
+	int vetochka2 = 0;
+
+	int listik1 = 0;
+	int listik2 = 0;
+
+	int i = 0;
+	int j = 0;
+
+	while (i < _colony1->getWorkersSize() || j < _colony2->getWorkersSize()) {
+	  if (heap1->isDead()) {
+		break;
+	  }
+
+	  if (i < _colony1->getWorkersSize()) {
+		Ant ant1 = _colony1->getWorker(i);
+
+		switch (ant1.getWorkerAb()) {
+		  case 0:
+		  default:
+			if (heap1->getKamyshek() > 0) {
+			  kamyshek1++;
+			  heap1->takeKamyshek();
+			} else if (heap1->getListik() > 0) {
+			  listik1++;
+			  heap1->takeLisktik();
+			} else if (heap1->getVetochka() > 0) {
+			  vetochka1++;
+			  heap1->takeVetochka();
+			} else if (heap1->getRosinka() > 0) {
+			  rosinka1++;
+			  heap1->takeRosinka();
+			}
+		}
+
+		i++;
+	  }
+
+	  if (j < _colony2->getWorkersSize()) {
+		Ant ant2 = _colony2->getWorker(j);
+
+		switch (ant2.getWorkerAb()) {
+		  case 0:
+		  default:
+			if (heap2->getKamyshek() > 0) {
+			  kamyshek2++;
+			  heap2->takeKamyshek();
+			} else if (heap2->getListik() > 0) {
+			  listik2++;
+			  heap2->takeLisktik();
+			} else if (heap2->getVetochka() > 0) {
+			  vetochka2++;
+			  heap2->takeVetochka();
+			} else if (heap2->getRosinka() > 0) {
+			  rosinka2++;
+			  heap2->takeRosinka();
+			}
+		}
+		j++;
+	  }
+	}
+
+	_colony1->addResources(kamyshek1, listik1, vetochka1, rosinka1);
+	_colony2->addResources(kamyshek2, listik2, vetochka2, rosinka2);
+
+	std::cout << "---Колония \'" << _colony1->getName() << "\' добыла ресурсов: в=" << vetochka1 << ", к=" << kamyshek1;
+	std::cout << ", л=" << listik1 << ", р=" << rosinka1 << std::endl;
+
+	std::cout << "---Колония \'" << _colony2->getName() << "\' добыла ресурсов: в=" << vetochka2 << ", к=" << kamyshek2;
+	std::cout << ", л=" << listik2 << ", р=" << rosinka2 << std::endl;
 
 	std::cout << std::endl;
   }
@@ -711,8 +821,16 @@ class GameProcessor : public AbstractGameProcessor {
 	std::cout << "-------------------------------------------" << std::endl;
   }
 
-  const char* getWinnerName() {
+  const char *getWinnerName() {
 	return _colony1->resSum() > _colony2->resSum() ? _colony1->getName() : _colony2->getName();
+  }
+
+  void winnerTalk() {
+	if (_colony1->resSum() > _colony2->resSum()) {
+	  _colony1->talk();
+	} else {
+	  _colony2->talk();
+	}
   }
 };
 
@@ -759,19 +877,19 @@ Colony *generateOrangeColony() {
 		  "элитный легенда",
 		  "Королева <Беатрикс>, цикл роста личинок 2-4 дней, может создать 1-5 королев",
 		  WARRIOR_TYPE
-		  )
-	  );
+	  )
+  );
 
   specials->push_back(
 	  *new Ant(
-			  21,
-			  9,
-			  8,
-			  "ленивый неуязвимый агрессивный крепкий - Шмель",
-			  "Королева <Беатрикс>, цикл роста личинок 2-4 дней, может создать 1-5 королев",
-			  SPECIAL_TYPE
-		  )
-	  );
+		  21,
+		  9,
+		  8,
+		  "ленивый неуязвимый агрессивный крепкий - Шмель",
+		  "Королева <Беатрикс>, цикл роста личинок 2-4 дней, может создать 1-5 королев",
+		  SPECIAL_TYPE
+	  )
+  );
 
   Queen *queen = new Queen(
 	  "Беатрикс",
@@ -928,6 +1046,7 @@ int main() {
 
   std::cout << "----------------------------------------------------------------" << std::endl;
   std::cout << "Началась засуха.\nВыжила колония \'" << gp->getWinnerName() << "\'.\nИгра окончена\n";
+  gp->winnerTalk();
   std::cout << "----------------------------------------------------------------" << std::endl;
   std::cout << "----------------------------------------------------------------" << std::endl;
 
