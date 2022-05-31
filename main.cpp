@@ -679,6 +679,148 @@ class GameProcessor : public AbstractGameProcessor {
 	std::cout << std::endl;
   }
 
+  static std::vector<int>& proccesResourcesTake(Heap* heap, const Ant& ant, bool abs) {
+	// 0 - vetochka, 1 - listik, 2 - kamyshek, 3 - rosinka
+	std::vector<int>& a = *new std::vector<int>;
+	a.push_back(0);
+	a.push_back(0);
+	a.push_back(0);
+	a.push_back(0);
+
+	int cnt = 0;
+	switch (abs ? ant.getWorkerAb() : 0) {
+	  case WORKER_ABILITY_STAR:
+		if (heap->getVetochka() > 0) {
+		  a[0]++;
+		  heap->takeVetochka();
+		}
+		break;
+	  case WORKER_ABILITY_PROD:
+		if (heap->getVetochka() > 0) {
+		  a[0]++;
+		  cnt++;
+		  heap->takeVetochka();
+		}
+
+		if (heap->getKamyshek() > 0) {
+		  a[2]++;
+		  cnt++;
+		  heap->takeKamyshek();
+		}
+
+		if (heap->getVetochka() > 0 && cnt < 2) {
+		  a[0]++;
+		  cnt++;
+		  heap->takeVetochka();
+		}
+
+		if (heap->getKamyshek() > 0 && cnt < 2) {
+		  a[2]++;
+		  cnt++;
+		  heap->takeKamyshek();
+		}
+
+		break;
+	  case WORKER_ABILITY_LEG:
+		if (heap->getKamyshek() > 0) {
+		  a[2]++;
+		  heap->takeKamyshek();
+		}
+
+		if (heap->getListik() > 0) {
+		  a[1]++;
+		  heap->takeLisktik();
+		}
+
+		if (heap->getVetochka() > 0) {
+		  a[0]++;
+		  heap->takeVetochka();
+		}
+
+		break;
+	  case WORKER_ABILITY_PROD1:
+		if (heap->getListik() > 0) {
+		  a[1]++;
+		  cnt++;
+		  heap->takeVetochka();
+		}
+
+		if (heap->getKamyshek() > 0) {
+		  a[2]++;
+		  cnt++;
+		  heap->takeKamyshek();
+		}
+
+		if (heap->getListik() > 0 && cnt < 2) {
+		  a[1]++;
+		  cnt++;
+		  heap->takeVetochka();
+		}
+
+		if (heap->getKamyshek() > 0 && cnt < 2) {
+		  a[2]++;
+		  cnt++;
+		  heap->takeKamyshek();
+		}
+
+		break;
+	  case WORKER_ABILITY_PROD2:
+		if (heap->getRosinka() > 0) {
+		  a[3]++;
+		  cnt++;
+		  heap->takeVetochka();
+		}
+
+		if (heap->getKamyshek() > 0) {
+		  a[2]++;
+		  cnt++;
+		  heap->takeKamyshek();
+		}
+
+		if (heap->getRosinka() > 0 && cnt < 2) {
+		  a[3]++;
+		  cnt++;
+		  heap->takeVetochka();
+		}
+
+		if (heap->getKamyshek() > 0 && cnt < 2) {
+		  a[2]++;
+		  cnt++;
+		  heap->takeKamyshek();
+		}
+
+		break;
+	  case WORKER_ABILITY_STARZ:
+		if (heap->getListik() > 0) {
+		  if (randomN(0, 1) == 1) {
+			a[1]++;
+			heap->takeLisktik();
+		  }
+		} else if (heap->getVetochka() > 0) {
+		  if (randomN(0, 1) == 1) {
+			a[0]++;
+			heap->takeVetochka();
+		  }
+		}
+	  default:
+		if (heap->getKamyshek() > 0) {
+		  a[2]++;
+		  heap->takeKamyshek();
+		} else if (heap->getListik() > 0) {
+		  a[1]++;
+		  heap->takeLisktik();
+		} else if (heap->getVetochka() > 0) {
+		  a[0]++;
+		  heap->takeVetochka();
+		} else if (heap->getRosinka() > 0) {
+		  a[3]++;
+		  heap->takeRosinka();
+		}
+	}
+
+	return a;
+  }
+
   void startWalk() {
 	Heap *heap1 = _heap_storage->getRandomAliveHeap();
 	Heap *heap2 = _heap_storage->getRandomAliveHeap();
@@ -709,6 +851,8 @@ class GameProcessor : public AbstractGameProcessor {
 	int i = 0;
 	int j = 0;
 
+	bool abs = !(_colony1->hasDisableWorkerAb() || _colony2->hasDisableWorkerAb());
+
 	while (i < _colony1->getWorkersSize() || j < _colony2->getWorkersSize()) {
 	  if (heap1->isDead()) {
 		break;
@@ -717,23 +861,11 @@ class GameProcessor : public AbstractGameProcessor {
 	  if (i < _colony1->getWorkersSize()) {
 		Ant ant1 = _colony1->getWorker(i);
 
-		switch (ant1.getWorkerAb()) {
-		  case 0:
-		  default:
-			if (heap1->getKamyshek() > 0) {
-			  kamyshek1++;
-			  heap1->takeKamyshek();
-			} else if (heap1->getListik() > 0) {
-			  listik1++;
-			  heap1->takeLisktik();
-			} else if (heap1->getVetochka() > 0) {
-			  vetochka1++;
-			  heap1->takeVetochka();
-			} else if (heap1->getRosinka() > 0) {
-			  rosinka1++;
-			  heap1->takeRosinka();
-			}
-		}
+		auto a = proccesResourcesTake(heap1, ant1, abs);
+		vetochka1 += a[0];
+		listik1 += a[1];
+		kamyshek1 += a[2];
+		rosinka1 += a[3];
 
 		i++;
 	  }
@@ -741,23 +873,12 @@ class GameProcessor : public AbstractGameProcessor {
 	  if (j < _colony2->getWorkersSize()) {
 		Ant ant2 = _colony2->getWorker(j);
 
-		switch (ant2.getWorkerAb()) {
-		  case 0:
-		  default:
-			if (heap2->getKamyshek() > 0) {
-			  kamyshek2++;
-			  heap2->takeKamyshek();
-			} else if (heap2->getListik() > 0) {
-			  listik2++;
-			  heap2->takeLisktik();
-			} else if (heap2->getVetochka() > 0) {
-			  vetochka2++;
-			  heap2->takeVetochka();
-			} else if (heap2->getRosinka() > 0) {
-			  rosinka2++;
-			  heap2->takeRosinka();
-			}
-		}
+		auto a = proccesResourcesTake(heap2, ant2, abs);
+		vetochka2 += a[0];
+		listik2 += a[1];
+		kamyshek2 += a[2];
+		rosinka2 += a[3];
+
 		j++;
 	  }
 	}
@@ -865,9 +986,45 @@ std::vector<Ant> *generateWarriors(int size, const char *queen_talk) {
 }
 
 Colony *generateOrangeColony() {
-  auto *workers = generateWorkers(18, "Королева <Беатрикс>, цикл роста личинок 2-4 дней, может создать 1-5 королев");
+  auto *workers = generateWorkers(15, "Королева <Беатрикс>, цикл роста личинок 2-4 дней, может создать 1-5 королев");
   auto *warriors = generateWarriors(8, "Королева <Беатрикс>, цикл роста личинок 2-4 дней, может создать 1-5 королев");
   auto *specials = new std::vector<Ant>;
+
+  workers->push_back(
+	  *new Ant(
+		  2,
+		  1,
+		  0,
+		  "старший",
+		  "Королева <Беатрикс>, цикл роста личинок 2-4 дней, может создать 1-5 королев",
+		 WORKER_SPECIAL_TYPE,
+		 WORKER_ABILITY_STAR
+		  )
+	  );
+
+  workers->push_back(
+	  *new Ant(
+		  6,
+		  2,
+		  0,
+		  "продвинутый",
+		  "Королева <Беатрикс>, цикл роста личинок 2-4 дней, может создать 1-5 королев",
+		  WORKER_SPECIAL_TYPE,
+		  WORKER_ABILITY_PROD
+	  )
+  );
+
+  workers->push_back(
+	  *new Ant(
+		  10,
+		  6,
+		  0,
+		  "легендарный ветеран",
+		  "Королева <Беатрикс>, цикл роста личинок 2-4 дней, может создать 1-5 королев",
+		  WORKER_SPECIAL_TYPE,
+		  WORKER_ABILITY_LEG
+	  )
+  );
 
   warriors->push_back(
 	  *new Ant(
@@ -913,6 +1070,43 @@ Colony *generateBlackColony() {
   auto *workers = generateWorkers(18, "Королева <Жозефина>, цикл роста личинок 3-3 дней, может создать 1-5 королев");
   auto *warriors = generateWarriors(5, "Королева <Жозефина>, цикл роста личинок 3-3 дней, может создать 1-5 королев");
   auto *specials = new std::vector<Ant>;
+
+
+  warriors->push_back(
+	  *new Ant(
+		  6,
+		  2,
+		  0,
+		  "продвинутый",
+		  "Королева <Жозефина>, цикл роста личинок 3-3 дней, может создать 1-5 королев",
+		  WORKER_SPECIAL_TYPE,
+		  WORKER_ABILITY_PROD1
+	  )
+  );
+
+  warriors->push_back(
+	  *new Ant(
+		  6,
+		  2,
+		  0,
+		  "продвинутый",
+		  "Королева <Жозефина>, цикл роста личинок 3-3 дней, может создать 1-5 королев",
+		  WORKER_SPECIAL_TYPE,
+		  WORKER_ABILITY_PROD2
+	  )
+  );
+
+  warriors->push_back(
+	  *new Ant(
+		  2,
+		  1,
+		  0,
+		  "старший забывчивый",
+		  "Королева <Жозефина>, цикл роста личинок 3-3 дней, может создать 1-5 королев",
+		  WORKER_SPECIAL_TYPE,
+		  WORKER_ABILITY_STARZ
+	  )
+  );
 
   warriors->push_back(
 	  *new Ant(
