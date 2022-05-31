@@ -14,12 +14,20 @@
 #define WARRIOR_SPECIAL_TYPE -1101
 #define SPECIAL_TYPE -1200
 
+#define WORKER_ABILITY_STAR -1000
+#define WORKER_ABILITY_PROD -1001
+#define WORKER_ABILITY_LEG -1002
+
+#define WORKER_ABILITY_PROD1 -1100
+#define WORKER_ABILITY_PROD2 -1101
+#define WORKER_ABILITY_STARZ -1102
+
 #define ULTIMATE_DAMAGE 1000
 
 #define DEFAULT_RANK "обычный"
 
 int randomN(int min, int max) {
-  return max;
+  return min;
 }
 
 class Talkative {
@@ -57,6 +65,18 @@ class Ant : public Talkative {
 
   bool _dead = false;
 
+  bool _can_loot = true;
+
+  bool _kamyshek = true;
+
+  bool _listik = true;
+
+  bool _rosinka = true;
+
+  bool _vetochka = true;
+
+  int _worker_ab = 0;
+
  public:
   void talk() const override {
 	std::cout << "Тип: " << this->_typeName << std::endl;
@@ -74,6 +94,9 @@ class Ant : public Talkative {
 	  case WARRIOR_TYPE: _health = 1;
 		_defence = 0;
 		_damage = 1;
+
+		_can_loot = false;
+		
 		_typeName = WARRIOR;
 		break;
 	  case WORKER_TYPE: _health = 1;
@@ -95,6 +118,25 @@ class Ant : public Talkative {
 		_rankName(rank_name),
 		_queenTalk(queen_talk),
 		_type(type) {
+	switch (type) {
+	  case WORKER_TYPE:
+	  case WORKER_SPECIAL_TYPE: _typeName = WORKER;
+		break;
+	  case WARRIOR_TYPE:
+	  case WARRIOR_SPECIAL_TYPE: _typeName = WARRIOR;
+		break;
+	  default: _typeName = SPECIAL;
+	}
+  }
+
+  Ant(int health, int defence, int damage, const char *rank_name, const char *queen_talk, const int type, const int w_ab)
+	  : _health(health),
+		_defence(defence),
+		_damage(damage),
+		_rankName(rank_name),
+		_queenTalk(queen_talk),
+		_type(type),
+		_worker_ab(w_ab) {
 	switch (type) {
 	  case WORKER_TYPE:
 	  case WORKER_SPECIAL_TYPE: _typeName = WORKER;
@@ -140,11 +182,16 @@ class Ant : public Talkative {
 	}
 	int hp = _health - damage + _defence;
 	if (hp > 0) {
+	  _health = hp;
 	  _dead = false;
 	  return false;
 	}
 
 	return true;
+  }
+
+  int getWorkerAb() const {
+	return _worker_ab;
   }
 
 };
@@ -355,8 +402,15 @@ class Colony : public TalkativeColony {
 	}
   }
 
-  int resSum() {
+  int resSum() const {
 	return _kamyshek + _listik + _rosinka + _vetochka;
+  }
+
+  bool hasDisableWorkerAb() {
+	for (auto& a : _workers) {
+	  if (a.getWorkerAb() == WORKER_ABILITY_LEG) return true;
+	}
+	return true;
   }
 };
 
@@ -578,9 +632,8 @@ class GameProcessor : public AbstractGameProcessor {
 	_colony2->killSpecials(scp2);
   }
 
-  void startWalk() {
+  void showWalkInfo(Heap* heap1, Heap* heap2) {
 	std::cout << std::endl;
-	Heap *heap1 = _heap_storage->getRandomAliveHeap();
 
 	if (heap1 == nullptr) {
 	  std::cout << "Походы более невозможны по причине истощения куч";
@@ -592,11 +645,17 @@ class GameProcessor : public AbstractGameProcessor {
 			  << _colony1->getSpecialsSize();
 	std::cout << std::endl;
 
-	Heap *heap2 = _heap_storage->getRandomAliveHeap();
 	std::cout << "Колония \'" << _colony2->getName() << "\' начала поход на кучу " << heap2->getNumber();
 	std::cout << ": р=" << _colony2->getWorkersSize() << ", в=" << _colony2->getWarriorsSize() << ", о="
 			  << _colony2->getSpecialsSize();
 	std::cout << std::endl;
+  }
+
+  void startWalk() {
+	Heap *heap1 = _heap_storage->getRandomAliveHeap();
+	Heap *heap2 = _heap_storage->getRandomAliveHeap();
+
+	showWalkInfo(heap1, heap2);
 
 	if (heap1 == heap2) {
 	  startBattle();
