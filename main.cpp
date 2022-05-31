@@ -71,16 +71,6 @@ class Ant : public Talkative {
 
   bool _dead = false;
 
-  bool _can_loot = true;
-
-  bool _kamyshek = true;
-
-  bool _listik = true;
-
-  bool _rosinka = true;
-
-  bool _vetochka = true;
-
   int _worker_ab = 0;
 
  public:
@@ -100,9 +90,6 @@ class Ant : public Talkative {
 	  case WARRIOR_TYPE: _health = 1;
 		_defence = 0;
 		_damage = 1;
-
-		_can_loot = false;
-
 		_typeName = WARRIOR;
 		break;
 	  case WORKER_TYPE: _health = 1;
@@ -160,26 +147,8 @@ class Ant : public Talkative {
 	}
   }
 
-  int getHealth() const {
-	return _health;
-  }
-  int getDefence() const {
-	return _defence;
-  }
   int getDamage() const {
 	return _damage;
-  }
-  const char *getTypeName() const {
-	return _typeName;
-  }
-  const char *getRankName() const {
-	return _rankName;
-  }
-  const char *getQueenTalk() const {
-	return _queenTalk;
-  }
-  bool isDead() const {
-	return _dead;
   }
 
   int getType() const {
@@ -550,8 +519,6 @@ class HeapStorage {
 class AbstractGameProcessor {
  public:
   virtual void nextDay() = 0;
-
-  virtual bool isNextDay() const = 0;
 
   virtual void talk() const = 0;
 };
@@ -1007,9 +974,6 @@ class GameProcessor : public AbstractGameProcessor {
 	childrenUpdate();
   }
 
-  bool isNextDay() const override {
-	return _days > 0;
-  }
   void talk() const override {
 	std::cout << "-------------------------------------------" << std::endl;
 	std::cout << "День " << DAYS_UNTIL - _days + 1 << " (до засухи " << _days << " дней):" << std::endl;
