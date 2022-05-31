@@ -3,6 +3,7 @@
 #include <exception>
 
 #define DAYS_UNTIL 14
+#define EVENT_DAYS 3
 
 #define WORKER "РАБОЧИЙ"
 #define WARRIOR "ВОИН"
@@ -559,6 +560,10 @@ class GameProcessor : public AbstractGameProcessor {
   Colony *_colony1;
   Colony *_colony2;
 
+  bool _specials = true;
+  bool _event_happened = false;
+  short _event_day = 0;
+
   void startBattle() {
 	std::cout << "Обе колонии выбрали одну кучу! Начинается битва" << std::endl;
 
@@ -601,7 +606,7 @@ class GameProcessor : public AbstractGameProcessor {
 
 	// особые особи, обладая повышенным интеллектом атакуют в первую очередь особых и рабочих, так как войны не имеют
 	// для них значения
-	if (_colony1->getSpecialsSize() > 0 || _colony2->getSpecialsSize() > 0) {
+	if ((_colony1->getSpecialsSize() > 0 || _colony2->getSpecialsSize() > 0) && _specials) {
 	  if (_colony2->getSpecialsSize() > 0) {
 		// атака второй колонии
 		if (_colony1->getSpecialsSize() > 0) {
@@ -644,10 +649,12 @@ class GameProcessor : public AbstractGameProcessor {
 	}
 
 	std::cout << "Битва окончена." << std::endl;
-	std::cout << "Колония \'" << _colony1->getName() << "\' потеряла:р=" << wor1.size() << ", в=" << war1.size()
-			  << ", о=" << scp1.size() << std::endl;
-	std::cout << "Колония \'" << _colony2->getName() << "\' потеряла:р=" << wor2.size() << ", в=" << war2.size()
-			  << ", о=" << scp2.size() << std::endl;
+	std::cout << "Колония \'" << _colony1->getName() << "\' потеряла:р=" << wor1.size() << ", в=" << war1.size();
+	if (_specials) std::cout << ", о=" << scp1.size();
+	std::cout << std::endl;
+	std::cout << "Колония \'" << _colony2->getName() << "\' потеряла:р=" << wor2.size() << ", в=" << war2.size();
+	if (_specials) std::cout  << ", о=" << scp2.size();
+	std::cout << std::endl;
 	std::cout << "-------------------------------------------" << std::endl;
 
 	_colony1->killWarriors(war1);
@@ -669,13 +676,13 @@ class GameProcessor : public AbstractGameProcessor {
 	}
 
 	std::cout << "Колония \'" << _colony1->getName() << "\' начала поход на кучу " << heap1->getNumber();
-	std::cout << ": р=" << _colony1->getWorkersSize() << ", в=" << _colony1->getWarriorsSize() << ", о="
-			  << _colony1->getSpecialsSize();
+	std::cout << ": р=" << _colony1->getWorkersSize() << ", в=" << _colony1->getWarriorsSize();
+	if (_specials) std::cout << ", o=" << _colony1->getSpecialsSize();
 	std::cout << std::endl;
 
 	std::cout << "Колония \'" << _colony2->getName() << "\' начала поход на кучу " << heap2->getNumber();
-	std::cout << ": р=" << _colony2->getWorkersSize() << ", в=" << _colony2->getWarriorsSize() << ", о="
-			  << _colony2->getSpecialsSize();
+	std::cout << ": р=" << _colony2->getWorkersSize() << ", в=" << _colony2->getWarriorsSize();
+	if (_specials) std::cout << ", о=" << _colony2->getSpecialsSize();
 	std::cout << std::endl;
   }
 
@@ -883,6 +890,58 @@ class GameProcessor : public AbstractGameProcessor {
 	  }
 	}
 
+	if (_colony2->getSpecialsSize() > 0 && _specials) {
+	  int cnt = 0;
+
+	  if (heap2->getKamyshek() > 0 && cnt < 2) {
+		kamyshek2++;
+		heap2->takeKamyshek();
+		cnt++;
+	  }
+
+	  if (heap2->getRosinka() > 0 && cnt < 2) {
+		rosinka2++;
+		heap2->takeRosinka();
+		cnt++;
+	  }
+
+	  if (heap2->getVetochka() > 0 && cnt < 2) {
+		vetochka2++;
+		heap2->takeVetochka();
+		cnt++;
+	  }
+
+	  if (heap2->getListik() > 0 && cnt < 2) {
+		listik2++;
+		heap2->takeLisktik();
+		cnt++;
+	  }
+
+	  if (heap2->getKamyshek() > 0 && cnt < 2) {
+		kamyshek2++;
+		heap2->takeKamyshek();
+		cnt++;
+	  }
+
+	  if (heap2->getRosinka() > 0 && cnt < 2) {
+		rosinka2++;
+		heap2->takeRosinka();
+		cnt++;
+	  }
+
+	  if (heap2->getVetochka() > 0 && cnt < 2) {
+		vetochka2++;
+		heap2->takeVetochka();
+		cnt++;
+	  }
+
+	  if (heap2->getListik() > 0 && cnt < 2) {
+		listik2++;
+		heap2->takeLisktik();
+		cnt++;
+	  }
+	}
+
 	_colony1->addResources(kamyshek1, listik1, vetochka1, rosinka1);
 	_colony2->addResources(kamyshek2, listik2, vetochka2, rosinka2);
 
@@ -904,21 +963,39 @@ class GameProcessor : public AbstractGameProcessor {
   GameProcessor(int days, HeapStorage *heap_storage, Colony *colony_1, Colony *colony_2)
 	  : _days(days), _heap_storage(heap_storage), _colony1(colony_1), _colony2(colony_2) {}
 
-  int getDays() const {
-	return _days;
-  }
-  HeapStorage *getHeapStorage() const {
-	return _heap_storage;
-  }
-  Colony *getColony1() const {
-	return _colony1;
-  }
-  Colony *getColony2() const {
-	return _colony2;
+  void updateEvent() {
+	if (_event_happened) {
+	  if (_event_day == EVENT_DAYS) {
+		std::cout << "---------------------------------------------" << std::endl;
+		std::cout << "Ливень закончился." << std::endl;
+		_specials = true;
+		_event_day++;
+		std::cout << "---------------------------------------------" << std::endl;
+	  } else if (_event_day < EVENT_DAYS) {
+		std::cout << "---------------------------------------------" << std::endl;
+		std::cout << "Ливень будет идти еще " << EVENT_DAYS - _event_day << " дней"  << std::endl;
+		_event_day++;
+		std::cout << "---------------------------------------------" << std::endl;
+	  }
+	  return;
+	}
+
+	if (randomN(0, 1) == 1) {
+	  _specials = false;
+	  _event_happened = true;
+	  _event_day++;
+
+	  std::cout << "---------------------------------------------" << std::endl;
+	  std::cout << "Начался ливень, который продлится 3 дня." << std::endl;
+	  std::cout << "Все особенные сидят дома!" << std::endl;
+	  std::cout << "---------------------------------------------" << std::endl;
+	}
   }
 
   void nextDay() override {
 	_days--;
+
+	updateEvent();
 
 	startWalk();
 
