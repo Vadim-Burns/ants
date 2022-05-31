@@ -1,6 +1,7 @@
 #include <iostream>
 #include <vector>
 #include <exception>
+#include <random>
 
 #define DAYS_UNTIL 14
 #define EVENT_DAYS 3
@@ -28,7 +29,11 @@
 #define DEFAULT_RANK "обычный"
 
 int randomN(int min, int max) {
-  return max;
+  std::random_device rd;     // only used once to initialise (seed) engine
+  std::mt19937 rng(rd());    // random-number engine used (Mersenne-Twister in this case)
+  std::uniform_int_distribution<int> uni(min,max); // guaranteed unbiased
+
+  return uni(rng);
 }
 
 class Talkative {
